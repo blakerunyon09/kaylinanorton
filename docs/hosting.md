@@ -72,6 +72,21 @@ After deploy, test the staging Netlify URL and confirm:
 
 The form redirects to `/thank-you/` after a successful submission.
 
+### SMS Alerts
+
+The repo includes a Netlify event function at `netlify/functions/send-contact-sms.mjs`. It runs after Netlify verifies a form submission and sends a short Twilio SMS for the `contact` form.
+
+Set these environment variables in Netlify under Project configuration > Environment variables:
+
+- `TWILIO_ACCOUNT_SID`: Twilio Account SID.
+- `TWILIO_AUTH_TOKEN`: Twilio Auth Token.
+- `CONTACT_SMS_TO`: Destination phone number in E.164 format, such as `+15555555555`.
+- `TWILIO_FROM_NUMBER`: Twilio sender number in E.164 format.
+
+Instead of `TWILIO_FROM_NUMBER`, you can set `TWILIO_MESSAGING_SERVICE_SID` if the Twilio account uses a Messaging Service.
+
+After setting the variables, redeploy the site and submit a real test contact form entry on the Netlify staging URL. Check Netlify Function logs and Twilio Messaging logs if the SMS does not arrive.
+
 ## WordPress Blog
 
 Recommended first pass: run WordPress on `blog.kaylinanorton.com`.
