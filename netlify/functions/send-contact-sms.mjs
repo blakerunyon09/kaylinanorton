@@ -10,6 +10,10 @@ const getField = (data, name) => {
 };
 
 const buildMessage = (data) => {
+  if (process.env.TWILIO_TRIAL_TEMPLATE_NAME) {
+    return process.env.TWILIO_TRIAL_TEMPLATE_NAME;
+  }
+
   const name = getField(data, "name") || "Unknown";
   const email = getField(data, "email") || "No email";
   const phone = getField(data, "phone") || "No phone";
