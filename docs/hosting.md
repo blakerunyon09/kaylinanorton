@@ -59,6 +59,19 @@ Connect the Git repository in Netlify and use:
 - Publish directory: `dist`
 - Node version: `22.12.0`
 
+### Contact Form
+
+The contact page uses Netlify Forms. In Netlify, keep form detection enabled, then redeploy from `main`.
+
+After deploy, test the staging Netlify URL and confirm:
+
+- The `contact` form appears in Netlify Forms.
+- A real test submission appears in the `contact` submissions list.
+- Email notifications are configured for the right inbox.
+- Spam protection is active through the `bot-field` honeypot.
+
+The form redirects to `/thank-you/` after a successful submission.
+
 ## WordPress Blog
 
 Recommended first pass: run WordPress on `blog.kaylinanorton.com`.
