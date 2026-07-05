@@ -9,9 +9,19 @@ const getField = (data, name) => {
   return typeof value === "string" ? value.trim() : "";
 };
 
+const getTrialTemplateName = () => {
+  const value = process.env.TWILIO_TRIAL_TEMPLATE_NAME;
+  if (!value) {
+    return "";
+  }
+
+  return value.trim().replace(/^["']|["']$/g, "").trim();
+};
+
 const buildMessage = (data) => {
-  if (process.env.TWILIO_TRIAL_TEMPLATE_NAME) {
-    return process.env.TWILIO_TRIAL_TEMPLATE_NAME;
+  const trialTemplateName = getTrialTemplateName();
+  if (trialTemplateName) {
+    return trialTemplateName;
   }
 
   const name = getField(data, "name") || "Unknown";
@@ -77,6 +87,7 @@ export default {
   async formSubmitted(event) {
     const data = event?.data ?? {};
     const formName = getField(data, "form-name");
+    const trialTemplateName = getTrialTemplateName();
 
     if (formName && formName !== "contact") {
       return;
@@ -86,6 +97,12 @@ export default {
     if (missingEnvVars.length > 0) {
       throw new Error(`Missing env vars: ${missingEnvVars.join(", ")}`);
     }
+
+    console.log(
+      trialTemplateName
+        ? `Sending Twilio trial template SMS: ${trialTemplateName}`
+        : "Sending Twilio custom contact alert SMS",
+    );
 
     await sendSms(buildMessage(data));
   },
