@@ -85,8 +85,6 @@ Set these environment variables in Netlify under Project configuration > Environ
 
 Instead of `TWILIO_FROM_NUMBER`, you can set `TWILIO_MESSAGING_SERVICE_SID` if the Twilio account uses a Messaging Service.
 
-Twilio trial accounts only allow predefined SMS templates. For trial testing, add `TWILIO_TRIAL_TEMPLATE_NAME` with one of Twilio's allowed template names, such as `sms_appointment_reminders`. Remove this variable after upgrading Twilio so SMS alerts can include the contact inquiry details.
-
 After setting the variables, redeploy the site and submit a real test contact form entry on the Netlify staging URL. Check Netlify Function logs and Twilio Messaging logs if the SMS does not arrive.
 
 ## WordPress Blog

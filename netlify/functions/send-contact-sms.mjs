@@ -9,21 +9,7 @@ const getField = (data, name) => {
   return typeof value === "string" ? value.trim() : "";
 };
 
-const getTrialTemplateName = () => {
-  const value = process.env.TWILIO_TRIAL_TEMPLATE_NAME;
-  if (!value) {
-    return "";
-  }
-
-  return value.trim().replace(/^["']|["']$/g, "").trim();
-};
-
 const buildMessage = (data) => {
-  const trialTemplateName = getTrialTemplateName();
-  if (trialTemplateName) {
-    return trialTemplateName;
-  }
-
   const name = getField(data, "name") || "Unknown";
   const email = getField(data, "email") || "No email";
   const phone = getField(data, "phone") || "No phone";
@@ -87,7 +73,6 @@ export default {
   async formSubmitted(event) {
     const data = event?.data ?? {};
     const formName = getField(data, "form-name");
-    const trialTemplateName = getTrialTemplateName();
 
     if (formName && formName !== "contact") {
       return;
@@ -98,11 +83,7 @@ export default {
       throw new Error(`Missing env vars: ${missingEnvVars.join(", ")}`);
     }
 
-    console.log(
-      trialTemplateName
-        ? `Sending Twilio trial template SMS: ${trialTemplateName}`
-        : "Sending Twilio custom contact alert SMS",
-    );
+    console.log("Sending Twilio custom contact alert SMS");
 
     await sendSms(buildMessage(data));
   },
