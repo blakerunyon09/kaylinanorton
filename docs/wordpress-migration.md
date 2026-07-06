@@ -157,6 +157,19 @@ Cons:
 7. Generate redirects.
    - Use the WordPress REST API to export all post slugs.
    - Add redirects to Netlify after the final target URL is known.
+   - This repo includes a generator:
+
+```sh
+npm run generate:wp-redirects
+```
+
+   - Default source: `https://kaylinanorton.com`
+   - Default origin: `https://wp.kaylinanorton.com`
+   - Override the origin if the WordPress staging/origin hostname changes:
+
+```sh
+WORDPRESS_ORIGIN=https://wordpress-origin.example.com npm run generate:wp-redirects
+```
 
 8. Final pre-launch QA.
    - Test homepage/static pages on Netlify.
