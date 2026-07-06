@@ -148,6 +148,17 @@ Cons:
    - Blog pagination works.
    - Category archives work.
    - RSS feed works if needed.
+   - This repo includes an audit command:
+
+```sh
+npm run audit:wp
+```
+
+   - Audit a staging/origin install:
+
+```sh
+WORDPRESS_URL=https://wp.kaylinanorton.com npm run audit:wp
+```
 
 6. Preserve `/blog/` routing.
    - Put WordPress on a hidden origin hostname.

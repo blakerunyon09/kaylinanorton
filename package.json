@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
+    "audit:wp": "node scripts/audit-wordpress.mjs",
     "build": "ASTRO_TELEMETRY_DISABLED=1 astro build",
     "generate:wp-redirects": "node scripts/generate-wordpress-redirects.mjs",
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview"
