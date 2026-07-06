@@ -48,6 +48,14 @@ Recommended first pass:
 
 Because preserving `/blog/` is an SEO requirement, the subdomain-only option is not the preferred path. Use a hidden WordPress origin and proxy public blog traffic through Netlify.
 
+Current origin blocker:
+
+- `wp.kaylinanorton.com` resolves to `75.101.134.27`.
+- HTTPS currently presents a self-signed certificate.
+- The host returns `404` with "Domain Not Configured" content.
+- Do not import into `kaylinanorton.com`; that is the live production WordPress site and importing there would duplicate content.
+- Next required step is to configure `wp.kaylinanorton.com` in the current WordPress/Showit/WP Engine hosting account, or create a separate destination WordPress install and point `wp.kaylinanorton.com` to it.
+
 ## Routing Options
 
 ### Option A: Preserve Blog Paths Behind Netlify Proxy
