@@ -67,6 +67,26 @@ const responseHeaders = (headers) => {
   return nextHeaders;
 };
 
+const shouldRewriteBody = (headers) => {
+  const contentType = String(headers["content-type"] ?? "").toLowerCase();
+
+  return (
+    contentType.includes("text/html") ||
+    contentType.includes("application/json") ||
+    contentType.includes("application/rss+xml") ||
+    contentType.includes("application/xml") ||
+    contentType.includes("text/xml")
+  );
+};
+
+const rewriteText = (text, request) => {
+  const publicOrigin = new URL(request.url).origin;
+
+  return text
+    .replaceAll(`https://${originHost}`, publicOrigin)
+    .replaceAll(`http://${originHost}`, publicOrigin);
+};
+
 const proxyRequest = async (request) => {
   const body =
     request.method === "GET" || request.method === "HEAD"
@@ -84,6 +104,27 @@ const proxyRequest = async (request) => {
         timeout: 15000,
       },
       (originResponse) => {
+        if (shouldRewriteBody(originResponse.headers)) {
+          const chunks = [];
+
+          originResponse.on("data", (chunk) => chunks.push(chunk));
+          originResponse.on("end", () => {
+            const headers = responseHeaders(originResponse.headers);
+            const body = rewriteText(Buffer.concat(chunks).toString("utf8"), request);
+
+            headers.delete("content-length");
+
+            resolve(
+              new Response(body, {
+                status: originResponse.statusCode ?? 502,
+                headers,
+              }),
+            );
+          });
+
+          return;
+        }
+
         resolve(
           new Response(Readable.toWeb(originResponse), {
             status: originResponse.statusCode ?? 502,
