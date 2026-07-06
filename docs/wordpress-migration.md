@@ -1,0 +1,206 @@
+# WordPress Migration Plan
+
+## Current Findings
+
+Live blog:
+
+- Public blog index: `https://kaylinanorton.com/blog/`
+- Current platform headers show WordPress on WP Engine with Showit in front:
+  - `x-powered-by: WP Engine`
+  - `x-showit: hosted`
+  - `link: <https://kaylinanorton.com/wp-json/>; rel="https://api.w.org/"`
+- WordPress REST API is public enough for auditing.
+- Content counts from REST headers:
+  - Posts: 197
+  - Media items: 6304
+  - Pages: 2 (`blog`, `home-page`)
+- The WordPress posts currently use root-level slugs, not `/blog/post-slug/`.
+  - Example: `https://kaylinanorton.com/david-sarah-crowne-plaza-playhouse-square-wedding-cleveland-ohio/`
+
+Important implication: moving the marketing site to Netlify means WordPress cannot live directly on the same PHP origin anymore. We need either a subdomain for WordPress or a proxy/redirect strategy for blog traffic.
+
+## Recommended Architecture
+
+Use Netlify for the static marketing site and managed WordPress for the blog.
+
+Recommended first pass:
+
+- Marketing site: `kaylinanorton.com` on Netlify.
+- WordPress admin/origin: `wp.kaylinanorton.com` or another non-public origin hostname.
+- Public blog URL: preserve `https://kaylinanorton.com/blog/` through Netlify rewrites/proxying.
+
+Because preserving `/blog/` is an SEO requirement, the subdomain-only option is not the preferred path. Use a hidden WordPress origin and proxy public blog traffic through Netlify.
+
+## Routing Options
+
+### Option A: Preserve Blog Paths Behind Netlify Proxy
+
+This keeps visitor-facing URLs on `kaylinanorton.com`.
+
+- WordPress runs on a hidden/origin subdomain such as `wp.kaylinanorton.com`.
+- Netlify uses `200` rewrites/proxies for blog routes.
+- Public blog index remains `https://kaylinanorton.com/blog/`.
+- Old root-level post URLs can continue to resolve on `kaylinanorton.com`.
+- WordPress should be configured so public links/canonicals prefer the final public domain where possible.
+
+Likely proxied paths:
+
+- `/blog/*`
+- `/category/*`
+- `/tag/*`
+- `/wp-content/uploads/*`
+- `/feed/`
+- `/comments/feed/`
+- all 197 root-level post slugs
+
+Example Netlify rewrite shape once the WordPress origin hostname is known:
+
+```toml
+[[redirects]]
+  from = "/blog/*"
+  to = "https://wp.kaylinanorton.com/blog/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/category/*"
+  to = "https://wp.kaylinanorton.com/category/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/wp-content/uploads/*"
+  to = "https://wp.kaylinanorton.com/wp-content/uploads/:splat"
+  status = 200
+  force = true
+```
+
+For the 197 existing root-level post URLs, generate explicit rewrites after migration:
+
+```toml
+[[redirects]]
+  from = "/david-sarah-crowne-plaza-playhouse-square-wedding-cleveland-ohio/"
+  to = "https://wp.kaylinanorton.com/david-sarah-crowne-plaza-playhouse-square-wedding-cleveland-ohio/"
+  status = 200
+  force = true
+```
+
+Pros:
+
+- Preserves `/blog/` for SEO.
+- Preserves current root-level post URLs if we include the generated post rewrite map.
+- Avoids a public blog subdomain URL change.
+
+Cons:
+
+- More moving parts.
+- WordPress canonical URLs, login cookies, media URLs, search, feeds, and previews need careful testing.
+- Netlify proxy responses have limitations and can be awkward for a full WordPress frontend.
+
+### Option B: Public Blog On `blog.kaylinanorton.com`
+
+This is the simplest and safest operationally.
+
+- Blog index moves to `https://blog.kaylinanorton.com/`.
+- Static site `Blog` links point to the subdomain.
+- Netlify redirects old paths with 301s:
+  - `/blog/` -> `https://blog.kaylinanorton.com/`
+  - `/blog/page/:page/` -> `https://blog.kaylinanorton.com/page/:page/`
+  - `/category/:slug/` -> `https://blog.kaylinanorton.com/category/:slug/`
+  - each old root-level post slug -> matching post URL on the subdomain.
+
+Pros:
+
+- Lowest risk.
+- WordPress behaves like normal WordPress.
+- Admin, previews, media, RSS, pagination, and canonical URLs are straightforward.
+
+Cons:
+
+- Public blog URLs change, though 301 redirects should preserve most SEO value.
+- We need a generated redirect map for the 197 old post slugs.
+
+## Migration Checklist
+
+1. Pick WordPress hosting.
+   - Easiest if staying managed: WP Engine/Flywheel/Kinsta style hosting.
+   - Cheapest can work too, but needs backups, security updates, caching, SSL, and support handled somewhere.
+
+2. Get access to the current WordPress admin.
+   - Current login route redirects through `https://kaylinanorton.com/wp-admin/`.
+   - We need an admin user with plugin/export permissions.
+
+3. Take a backup before touching anything.
+   - Prefer a host-level backup/export if WP Engine/Showit provides one.
+   - Also export WordPress content from `Tools > Export > All content`.
+
+4. Migrate into a staging WordPress install.
+   - Preferred: host migration plugin or full backup restore because there are 6304 media items.
+   - Fallback: WordPress XML export/import with "Download and import file attachments" enabled.
+   - Keep the current live site accessible while importing, because XML import downloads media from the old URLs.
+
+5. Verify staging content.
+   - Post count: 197.
+   - Media library count close to 6304.
+   - Categories match current categories.
+   - Featured images render.
+   - Long image-heavy wedding posts render fully.
+   - Blog pagination works.
+   - Category archives work.
+   - RSS feed works if needed.
+
+6. Preserve `/blog/` routing.
+   - Put WordPress on a hidden origin hostname.
+   - Proxy `/blog/`, category/archive paths, uploads, feeds, and existing post slugs through Netlify.
+   - Test canonical URLs and generated links before launch.
+
+7. Generate redirects.
+   - Use the WordPress REST API to export all post slugs.
+   - Add redirects to Netlify after the final target URL is known.
+
+8. Final pre-launch QA.
+   - Test homepage/static pages on Netlify.
+   - Test contact form email.
+   - Test blog index.
+   - Test several old post URLs.
+   - Test a category page.
+   - Test a direct image URL under `/wp-content/uploads/`.
+   - Test mobile and desktop.
+
+9. DNS cutover.
+   - Do not swap production DNS until static site, contact form, and WordPress routing all pass staging QA.
+
+## Current Category Audit
+
+Top-level and nested categories currently visible through REST:
+
+- weddings: 57
+- portraits: 60
+- engagements: 43
+- tips: 23
+- personal: 20
+- first look: 20
+- sunset session: 16
+- family: 29
+- baby: 26
+- for brides: 16
+- seniors: 13
+- lifestyle: 12
+- for clients: 10
+- travel: 4
+- kids: 4
+- inspiration: 3
+- for photographers: 3
+- hidden session: 3
+- styled shoots: 2
+- wedding planning: 5
+- our wedding: 7
+- couples: 6
+
+## Sources
+
+- Live site headers and REST checks against `kaylinanorton.com`.
+- WordPress Importer imports posts, pages, comments, custom fields, categories, tags, and authors.
+- WordPress import can download attached media during import when the attachment option is enabled.
+- WP Engine provides an automated migration plugin flow for moving WordPress sites.
+- Netlify supports `200` rewrites/proxies, but proxied content needs testing for assets and behavior.
