@@ -38,23 +38,29 @@ Important implication: moving the marketing site to Netlify means WordPress cann
 
 ## Recommended Architecture
 
-Use Netlify for the static marketing site and managed WordPress for the blog.
+Use Netlify for the static marketing site and keep the existing WP Engine/Showit WordPress origin for the blog.
 
 Recommended first pass:
 
 - Marketing site: `kaylinanorton.com` on Netlify.
-- WordPress admin/origin: `wp.kaylinanorton.com` or another non-public origin hostname.
+- WordPress origin: current WP Engine/Showit origin at `104.154.116.193`.
 - Public blog URL: preserve `https://kaylinanorton.com/blog/` through Netlify rewrites/proxying.
 
-Because preserving `/blog/` is an SEO requirement, the subdomain-only option is not the preferred path. Use a hidden WordPress origin and proxy public blog traffic through Netlify.
+Because preserving `/blog/` is an SEO requirement, the subdomain-only option is not the preferred path. Use the Netlify WordPress proxy function to serve public blog traffic from the current WP Engine/Showit origin.
 
-Current origin blocker:
+Current origin approach:
 
-- `wp.kaylinanorton.com` resolves to `75.101.134.27`.
-- HTTPS currently presents a self-signed certificate.
-- The host returns `404` with "Domain Not Configured" content.
+- `wp.kaylinanorton.com` was tested as a hidden origin, but the host returned `404` with "Domain Not Configured" content and a self-signed certificate.
+- The repo now includes a Netlify Function proxy at `netlify/functions/wordpress-proxy.mjs`.
+- The proxy reaches the current WP Engine/Showit origin at `104.154.116.193` and sends:
+  - `Host: kaylinanorton.com`
+  - `X-Forwarded-Proto: https`
+- This lets Netlify serve public `/blog/` routes from the existing WordPress origin after public DNS moves to Netlify.
+- The proxy is implemented as a streaming Netlify Function so larger image responses can pass through. Netlify currently documents a 20 MB streamed response payload limit.
+- Defaults can be overridden with Netlify environment variables:
+  - `WORDPRESS_ORIGIN_IP`
+  - `WORDPRESS_ORIGIN_HOST`
 - Do not import into `kaylinanorton.com`; that is the live production WordPress site and importing there would duplicate content.
-- Next required step is to configure `wp.kaylinanorton.com` in the current WordPress/Showit/WP Engine hosting account, or create a separate destination WordPress install and point `wp.kaylinanorton.com` to it.
 
 ## Routing Options
 
@@ -62,8 +68,8 @@ Current origin blocker:
 
 This keeps visitor-facing URLs on `kaylinanorton.com`.
 
-- WordPress runs on a hidden/origin subdomain such as `wp.kaylinanorton.com`.
-- Netlify uses `200` rewrites/proxies for blog routes.
+- WordPress remains on the current WP Engine/Showit origin.
+- Netlify uses `200` rewrites to `/.netlify/functions/wordpress-proxy/...` for blog routes.
 - Public blog index remains `https://kaylinanorton.com/blog/`.
 - Old root-level post URLs can continue to resolve on `kaylinanorton.com`.
 - WordPress should be configured so public links/canonicals prefer the final public domain where possible.
@@ -78,36 +84,18 @@ Likely proxied paths:
 - `/comments/feed/`
 - all 197 root-level post slugs
 
-Example Netlify rewrite shape once the WordPress origin hostname is known:
+Example Netlify rewrite shape:
 
 ```toml
-[[redirects]]
-  from = "/blog/*"
-  to = "https://wp.kaylinanorton.com/blog/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/category/*"
-  to = "https://wp.kaylinanorton.com/category/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/wp-content/uploads/*"
-  to = "https://wp.kaylinanorton.com/wp-content/uploads/:splat"
-  status = 200
-  force = true
+/blog/* /.netlify/functions/wordpress-proxy/blog/:splat 200!
+/category/* /.netlify/functions/wordpress-proxy/category/:splat 200!
+/wp-content/uploads/* /.netlify/functions/wordpress-proxy/wp-content/uploads/:splat 200!
 ```
 
 For the 197 existing root-level post URLs, generate explicit rewrites after migration:
 
 ```toml
-[[redirects]]
-  from = "/david-sarah-crowne-plaza-playhouse-square-wedding-cleveland-ohio/"
-  to = "https://wp.kaylinanorton.com/david-sarah-crowne-plaza-playhouse-square-wedding-cleveland-ohio/"
-  status = 200
-  force = true
+/david-sarah-crowne-plaza-playhouse-square-wedding-cleveland-ohio/ /.netlify/functions/wordpress-proxy/david-sarah-crowne-plaza-playhouse-square-wedding-cleveland-ohio/ 200!
 ```
 
 Pros:
@@ -186,7 +174,6 @@ WORDPRESS_URL=https://wp.kaylinanorton.com npm run audit:wp
 ```
 
 6. Preserve `/blog/` routing.
-   - Put WordPress on a hidden origin hostname.
    - Proxy `/blog/`, category/archive paths, uploads, feeds, and existing post slugs through Netlify.
    - Test canonical URLs and generated links before launch.
 
@@ -200,12 +187,8 @@ npm run generate:wp-redirects
 ```
 
    - Default source: `https://kaylinanorton.com`
-   - Default origin: `https://wp.kaylinanorton.com`
-   - Override the origin if the WordPress staging/origin hostname changes:
-
-```sh
-WORDPRESS_ORIGIN=https://wordpress-origin.example.com npm run generate:wp-redirects
-```
+   - The generated redirects route to `/.netlify/functions/wordpress-proxy`.
+   - Override `WORDPRESS_ORIGIN_IP` and `WORDPRESS_ORIGIN_HOST` in Netlify if the current WP Engine/Showit origin changes.
 
 8. Final pre-launch QA.
    - Test homepage/static pages on Netlify.
