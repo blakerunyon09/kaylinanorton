@@ -280,7 +280,6 @@ const writeRedirects = async () => {
     new URL("_redirects", publicDir),
     [
       "# WordPress blog is statically generated from the 2026-07-06 WXR export.",
-      "/blog /blog/ 301!",
       "/wp-content/uploads/* /.netlify/functions/wordpress-proxy/wp-content/uploads/:splat 200!",
       "",
     ].join("\n"),
